@@ -1,0 +1,501 @@
+---
+title: "Assignment #5"
+author: "Mengxin(Maxine) Qian"
+date: "August 14, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE}
+if (!require("knitr")) { install.packages("knitr")
+}
+if (!require("tidyr")) { install.packages("tidyr")
+}
+if (!require("plyr")) { install.packages("plyr")
+}
+if (!require("dplyr")) { install.packages("dplyr")
+}
+if (!require("ggplot2")) { install.packages("ggplot2")
+}
+if (!require("lubridate")) { install.packages("lubridate")
+}
+if (!require("magrittr")) { install.packages("magrittr")
+}
+if (!require("scales")) { install.packages("scales")
+}
+if (!require("corrplot")) { install.packages("corrplot")
+}
+if (!require("psych")) { install.packages("psych")
+}
+if (!require("stringr")) { install.packages("stringr")
+}
+```
+
+```{r}
+library(knitr)
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(magrittr)
+library(scales)
+library(corrplot)
+library(psych)
+library(stringr)
+```
+
+#Question 1
+##Task 1
+###Step 1: Data Import and Initial Review
+
+```{r}
+#import data with '', 'NA', and 'na' as NA
+room_df <- read.csv('hotelData.csv',
+                    stringsAsFactors = FALSE,
+                    na.strings = c("","NA","na"))
+
+df.type <- summarise_each(room_df,funs(typeof))
+df.class <- summarise_each(room_df,funs(class))
+df.unique <- summarise_each(room_df,funs(n_distinct))
+df.numNA <- summarise_each(room_df,funs(sum(is.na(.))))
+cap1 <- "Type, class, number of unique, and number of 
+NA entries in original data set"
+kable(cbind(variable = names(df.unique),type=unlist(df.type),
+            class = unlist(df.class),unique = unlist(df.unique),
+            na = unlist(df.numNA)
+            ), row.names=FALSE, caption=cap1)
+```
+
+Firstly, I read in the csv as data frame. And set any "",NA,or na as NA in the data frame.
+
+And then I checked the type, class, unique values and number of NA of each column. As indicated in Table 1, there is no NA in each column. The unique number of each column looks reasonable. The data type of date column is character, which shuld be converted to date. To further validate each column, I will check each column one by one in the next step.
+
+###Step2: Validation of each column
+####1.2.1 `room`
+```{r}
+table(room_df$room)
+```
+
+The unique room names looks correct, and there is equal observations of each type of room in the dataset.
+
+####1.2.2 `date`
+```{r results='hold'}
+room_df$date <-lubridate::ymd_hms(room_df$date)
+uniqueroomperdate <- unique((room_df %>% count(date))$n)
+```
+
+Firstly, as discovered in the previous step, the orginal data type of date is character. I used a function from `lubridate` package to convert the column type to date. This function will generate error if the original date format is not correct. Since there is no error when running this function, we can conclude that all the date in this column is legitimate. 
+
+Secondly, I checked that each date corresponding to `r uniqueroomperdate` rooms, so there is no duplicated dates in this column.
+
+####1.2.3 `area`
+```{r fig.cap="Histogram of area"}
+ggplot(room_df,aes(x=area)) + geom_histogram(binwidth=300)+
+  labs(x="\n area", y = "count \n")
+```
+
+As indicated in figure 1, the area of rooms are within the reasonable range.
+
+####1.2.4 `event_min`
+```{r fig.cap="Histogram of event minute"}
+ggplot(room_df,aes(x=event_min)) + geom_histogram(binwidth=300)+
+  labs(x = "\n scheduled event minute", y = "count \n")
+event_time_flag <- room_df$event_min > room_df$max_min
+room_df$event_min[event_time_flag] <- 1080
+```
+
+As indicated in figure 2, there are some observations with event time larger than the max_min, which is questionable. I replaced these values with the maximal available time 1080 minutes. 
+
+####1.2.5 `max_min`
+```{r}
+max_min <- unique(room_df$max_min)
+```
+
+The total number of available minutes to schedule an event are the same for all rooms, which is ``r max_min`` minutes.
+
+####1.2.6 `year`
+```{r}
+checkequal_func <- function(x,y) {x!=y}
+yearnotmatch <- sum(mapply(checkequal_func,x=year(room_df$date),y=room_df$year))
+```
+
+I created a function checkeuqal()to check whether year, month and day match with the date of that observation. All the years match with the corresponding dates.
+
+####1.2.7 `month`
+```{r}
+monthnotmatch <- sum(mapply(checkequal_func,x=month.name[month(room_df$date)]
+           ,y=room_df$month))
+```
+
+All the months match with the corresponding dates.
+
+####1.2.8 `day`
+```{r}
+daynotmatch <- sum(mapply(checkequal_func,x=day(room_df$date),y=room_df$day))
+```
+
+All the days match with the corresponding dates.
+
+##Task 2
+```{r eval=FALSE}
+room_df1 <- mutate(room_df,utilization_rate = event_min/max_min)
+room_df1 <- mutate(room_df1,dayofyear = yday(date))
+
+uniqueroom <- unique(room_df1$room)
+n=1
+for (room in uniqueroom){
+  room_each <- room_df1[room_df1$room == room,]
+  filename <- paste('task2_',as.character(n),'.pdf',sep="")
+  room_each %>% ggplot(aes(x = dayofyear,y=utilization_rate)) +
+    geom_line(aes(colour=factor(year))) + 
+    scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks=seq(0,360,30)) +
+    labs(x = "\n Day of Year", y = "Utilization \n") +
+    facet_grid(year~.)+
+    ggtitle(paste(room,"Room Utilization Rates \n")) +
+    theme(legend.position="none", 
+          axis.text = element_text(size = 12, colour = "grey60"),
+          axis.title=element_text(size=21),
+          strip.text = element_text(size=21),
+          title =element_text(size=21),
+          plot.margin = unit(c(0.8,0.8,0.8,0.8), "cm")) +
+    ggsave(filename, width=11, height=8.5)
+    n = n + 1
+}
+```
+
+##Task3
+```{r eval=FALSE}
+room_df2 <- mutate(room_df1,dayofweek = weekdays(date))
+level_vector<-c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday")
+room_df2 <- mutate(room_df2,dayofweek_f = factor(dayofweek,levels=level_vector))
+
+uniqueroom <- unique(room_df1$room)
+n=1
+for (room in uniqueroom){
+  room_each <- room_df2[room_df2$room == room,]
+  filename <- paste('task3_',as.character(n),'.pdf',sep="")
+  room_each %>% ggplot(aes(x = dayofyear,y=utilization_rate)) +
+    geom_line(aes(colour=dayofweek_f)) + 
+    scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks=seq(0,360,30)) +
+    labs(x = "\n Day of Year", y = "Utilization \n") +
+    facet_grid(dayofweek_f~.)+
+    ggtitle(paste(room,"Room Utilization Rates by Day Week \n")) +
+    theme(legend.position="none", 
+          axis.text = element_text(size = 12, colour = "grey60"),
+          axis.title=element_text(size=21),
+          strip.text = element_text(size=11),
+          title =element_text(size=21),
+          plot.margin = unit(c(0.8,0.8,0.8,0.8), "cm")) +
+    ggsave(filename, width=11, height=8.5)
+  n = n + 1
+}
+```
+
+##Task 4
+```{r eval=FALSE}
+daytype_func <- function(x) {
+  if (any(grepl(x,c("Monday","Tuesday","Wednesday","Thursday","Friday")))){
+    "Weekday"
+  }else{
+    "Weekend"
+  }  }
+
+room_df3 <- mutate(room_df2,daytype = sapply(dayofweek,daytype_func))
+room_df4 <- room_df3 %>% ddply(c("room","dayofyear","daytype"), summarise, 
+                   mean_rate=mean(utilization_rate),
+                   max_rate=max(utilization_rate),
+                   min_rate=min(utilization_rate))
+room_df4$daytype <- factor(room_df4$daytype,levels = c('Weekday','Weekend'))
+
+uniqueroom <- unique(room_df1$room)
+n=1
+for (room in uniqueroom){
+  room_each <- room_df4[room_df4$room == room,]
+  filename <- paste('task4_',as.character(n),'.pdf',sep="")
+  room_each %>% 
+    ggplot(aes(x = dayofyear)) +
+    geom_area(aes(y=max_rate),fill="gray48",alpha=0.5)+
+    geom_line(aes(y=mean_rate)) +
+    geom_area(aes(y=min_rate),fill="gray89",alpha=1)+
+    scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks=seq(0,360,30)) +
+    labs(x = "\n Day of Year", y = "Min,Mean & Max Utilization \n") +
+    facet_grid(daytype~.)+
+    ggtitle(paste(room,"Room Utilization Rates\n")) +
+    theme(legend.position="none", 
+          axis.text = element_text(size = 12, colour = "grey60"),
+          axis.title=element_text(size=20),
+          strip.text = element_text(size=16),
+          title =element_text(size=20),
+          plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm")) +
+    ggsave(filename, width=11, height=8.5)
+  n = n + 1
+}
+```
+
+##Task 5
+```{r eval=FALSE}
+room_df5 <- room_df3 %>% ddply(c("room","dayofyear"), summarise, 
+                               mean_rate=mean(utilization_rate),
+                               max_rate=max(utilization_rate),
+                               min_rate=min(utilization_rate))
+
+uniqueroom <- unique(room_df1$room)
+n=1
+for (room in uniqueroom){
+  room_each <- room_df5[room_df5$room == room,]
+  filename <- paste('task5_',as.character(n),'.pdf',sep="")
+  room_each %>% 
+    ggplot(aes(x = dayofyear)) +
+    geom_area(aes(y=max_rate),fill="gray48",alpha=0.5)+
+    geom_line(aes(y=mean_rate)) +
+    geom_area(aes(y=min_rate),fill="gray89",alpha=1)+
+    scale_y_continuous(labels=percent) + 
+    scale_x_continuous(breaks=seq(0,360,30)) +
+    labs(x = "\n Day of Year", y = "Min,Mean & Max Utilization \n") +
+    ggtitle(paste(room,"Room Utilization Rates\n")) +
+    theme(legend.position="none", 
+          axis.text = element_text(size = 12, colour = "grey60"),
+          axis.title=element_text(size=20),
+          strip.text = element_text(size=16),
+          title =element_text(size=20),
+          plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm")) +
+    ggsave(filename, width=11, height=8.5)
+  n = n + 1
+}
+```
+
+##Task 6
+```{r eval=FALSE}
+room_df6 <- room_df3 %>% ddply(c("room","dayofweek"), summarise, 
+                               mean_rate=mean(utilization_rate))
+uniquedayofweek <- unique(room_df6$dayofweek)
+for (dayweek in uniquedayofweek){
+  ss_vector = rep(0,9)
+  for (k in c(2:10)){
+    title_str <- paste(dayweek,":",k,"- Means Grouping by Mean Utilization","\n")
+    dayweek_each <- room_df6[room_df6$dayofweek == dayweek,]
+    cluster_vector <- kmeans(dayweek_each$mean_rate,k,iter=10)$cluster
+    ss_vector[k-1] <- sum(kmeans(dayweek_each$mean_rate,k,iter=10)$withinss)
+    cluster_df <- cbind(dayweek_each,cluster_vector)
+    filename <- paste('task6_dayweek',
+                      as.character(dayweek),'_k',as.character(k),'.pdf',sep="")
+    cluster_df %>% ggplot(aes(x=mean_rate,y=reorder(room,mean_rate)))+
+      geom_segment(aes(yend=room), xend=0, colour="grey50")+
+      geom_point(size=3,aes(colour=factor(cluster_vector)))+
+      labs(x = "\n Mean Utilization", y = "Room \n")+
+      ggtitle(title_str)+
+      theme(legend.position="none", 
+            axis.text = element_text(size = 12, colour = "grey60"),
+            axis.title=element_text(size=15),
+            title =element_text(size=15),
+            plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm")) +
+      ggsave(filename, width=11, height=8.5)
+  }
+  k_vector <- c(2:10)
+  ss_df <- data.frame(k_vector,ss_vector)
+  tistr <- 'Total Within SS versus Number of Clusters for 
+  K-Means Grouping by Mean Utilization','\n')
+  title_str2 <- paste(dayweek,':'tistr)
+  filename2 <- paste('task6_ss_dayweek',as.character(dayweek),'.pdf',sep="")
+  ss_df %>% ggplot(aes(x = k_vector,y=ss_vector)) +
+    geom_line() + 
+    geom_point(size=3)+
+    scale_x_continuous(breaks=seq(2,10,1)) +
+    labs(x = "\n Number of Clusters", y = "Total Within SS \n") +
+    ggtitle(title_str2) +
+    theme(legend.position="none", 
+          axis.text = element_text(size = 11, colour = "grey60"),
+          axis.title=element_text(size=13),
+          title =element_text(size=12),
+          plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm")
+          ) +
+    ggsave(filename2, width=11, height=8.5)
+}
+```
+
+##Task 7
+```{r eval=FALSE}
+uniqueyear <- unique(room_df3$year)
+for (year in uniqueyear){
+  each_year_df = room_df3[room_df3$year==year,c('room','date','utilization_rate')]
+  each_year_reshapedf <- spread(each_year_df, room, utilization_rate)[,-c(1)]
+  roomname <- colnames(each_year_reshapedf)
+  roomname_new <- sapply(roomname, function(x) paste(x,'Room'))
+  colnames(each_year_reshapedf) <- roomname_new
+  corr_df <- psych::corr.test(each_year_reshapedf)
+  corr_max <- corr_df$r
+  p_max <- corr_df$p
+  title_task7 <- paste("Correlation Matrix of Utilization by Year:",year)
+  
+  pdf(width=8.5,height=11,file=paste("task7_",year,".pdf"))
+  corrplot(corr_max, p.mat=p_max, sig.level=0.05, type='lower',
+         method='square',tl.col = "black",tl.srt=90,
+         title=title_task7,pch.cex =3.5,mar = c(3,3,15,3)
+         )
+  dev.off()
+}
+```
+
+##Task 8
+```{r eval=FALSE}
+for (dayweek2 in uniquedayofweek){
+  each_day_df = room_df3[room_df3$dayofweek==dayweek2,c('room','date','utilization_rate')]
+  each_day_reshapedf <- spread(each_year_df, room, utilization_rate)[,-c(1)]
+  colnames(each_day_reshapedf) <- roomname_new
+  corr_df2 <- psych::corr.test(each_day_reshapedf)
+  corr_max2 <- corr_df2$r
+  p_max2 <- corr_df2$p
+  title_task8 <- paste("Correlation Matrix of Utilization by Day:",dayweek2)
+  
+  pdf(width=8.5,height=11,file=paste("task8_",dayweek2,".pdf"))
+  corrplot(corr_max2, p.mat=p_max2, sig.level=0.05, type='lower',
+           method='square',tl.col = "black",tl.srt=90,
+           title=title_task8,pch.cex =3.5,mar = c(3,3,15,3)
+  )
+  dev.off()
+}
+```
+
+##Task 9
+```{r eval=FALSE}
+room_df9 = room_df3[,c('room','date','utilization_rate')]
+room_df9_reshapedf <- spread(room_df9, room, utilization_rate)[,-c(1)]
+colnames(room_df9_reshapedf) <- roomname_new
+corr_df <- psych::corr.test(room_df9_reshapedf)
+corr_max <- corr_df$r
+p_max <- corr_df$p
+title_task9 <- paste("Correlation Matrix of Utilization")
+
+pdf(width=8.5,height=11,file=paste("task9.pdf"))
+corrplot(corr_max, p.mat=p_max, sig.level=0.05, type='lower',
+         method='square',tl.col = "black",tl.srt=90,
+         title=title_task9,pch.cex =3.5,mar = c(3,3,15,3)
+)
+dev.off()
+```
+
+#Question 2
+##2.1
+```{r fig.cap="PDF", warning=FALSE}
+x = seq(0.0001,1,0.001)
+y1 = dbeta(x, 0.5, 0.5)
+y2 = dbeta(x, 5, 1)
+y3 = dbeta(x, 1, 3)
+y4 = dbeta(x, 2, 2)
+y5 = dbeta(x, 2, 5)
+pdf_df <- data.frame(x,y1,y2,y3,y4,y5)
+pdf_df_reshape <- gather(pdf_df,paratype,y,y1,y2,y3,y4,y5)
+#columns <- bquote()
+match_func <- function(x) {
+  if (x == 'y1'){
+    paste('{',0.5,',',0.5,'}',sep='')
+  } else if(x=='y2'){
+    paste('{',5,',',1,'}',sep='')
+  } else if(x=='y3'){
+    paste('{',1,',',3,'}',sep='')
+  } else if(x=='y4'){
+    paste('{',2,',',2,'}',sep='')
+  } else{
+    paste('{',2,',',5,'}',sep='')}
+}
+pdf_df_reshape$facet_label <- sapply(pdf_df_reshape$paratype,match_func)
+
+(ggplot(pdf_df_reshape,aes(x,y,colour=factor(facet_label))) + 
+  geom_line())+
+  labs(x = "", y = "") +
+  xlim(0,1)+
+  ylim(0,5)+
+  ggtitle("Probability density function")+
+  scale_colour_discrete(name=expression(paste('{',alpha,',',beta,'}')))
+```
+
+Please refer to Figure 3.
+
+##2.2
+```{r fig.cap="CDF", warning=FALSE}
+x_vector = seq(0.0001,1,0.001)
+cdf_func1 <- function(x) {integrate(dbeta,shape1=0.5,shape2=0.5,lower=0,upper=x)$value}
+y1 <- sapply(x_vector,cdf_func1)
+cdf_func2 <- function(x) {integrate(dbeta,shape1=5,shape2=1,lower=0,upper=x)$value}
+y2 <- sapply(x_vector,cdf_func2)
+cdf_func3 <- function(x) {integrate(dbeta,shape1=1,shape2=3,lower=0,upper=x)$value}
+y3 <- sapply(x_vector,cdf_func3)
+cdf_func4 <- function(x) {integrate(dbeta,shape1=2,shape2=2,lower=0,upper=x)$value}
+y4 <- sapply(x_vector,cdf_func4)
+cdf_func5 <- function(x) {integrate(dbeta,shape1=2,shape2=5,lower=0,upper=x)$value}
+y5 <- sapply(x_vector,cdf_func5)
+
+pdf_df2 <- data.frame(x_vector,y1,y2,y3,y4,y5)
+pdf_df2_reshape <- gather(pdf_df2,paratype,y_vector,y1,y2,y3,y4,y5)
+pdf_df2_reshape$facet_label <- sapply(pdf_df2_reshape$paratype,match_func)
+
+(ggplot(pdf_df2_reshape,aes(x_vector,y_vector,colour=factor(facet_label))) + 
+  geom_line())+
+  labs(x = "", y = "") +
+  ggtitle("Cumulative density function")+
+  scale_colour_discrete(name=expression(paste('{',alpha,',',beta,'}')))
+```
+
+Please refer to Figure 4.
+
+##2.3
+```{r fig.cap="PDF and CDF", warning=FALSE}
+colnames(pdf_df_reshape) <- c('x','paratype','pdf','facet_label')
+colnames(pdf_df2_reshape) <- c('x','paratype','cdf','facet_label')
+combind_pdf <- left_join(pdf_df_reshape,pdf_df2_reshape,
+                         by=c('x','paratype','facet_label'))
+
+combind_pdf_reshape <- gather(combind_pdf,function_type,y_value,pdf,cdf)
+
+(ggplot(combind_pdf_reshape,aes(x,y_value)) + 
+  geom_line())+
+  labs(x = "", y = "") +
+  xlim(0,1)+
+  ylim(0,3)+
+  facet_grid(facet_label~function_type,
+             labeller=label_bquote(paste('{',alpha,',',beta,'}','=',.(x))))+
+  theme(strip.text = element_text(size=7))
+```
+
+Please refer to Figure 5.
+
+#Question 3
+```{r}
+#Read in data
+original_df <- read.csv('redfinData.csv',fileEncoding = "UTF-16",
+                        sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+#Add column year
+df1 <- mutate(original_df,year=as.integer(str_sub(Month.of.Period.End,-4,-1)))
+
+#Pivot entries in column Measure.Names to columns
+df2 <- spread(df1,Measure.Names,Measure.Values)
+
+#Remove column Month.of.Period.End
+df3 <- subset( df2, select = -Month.of.Period.End )
+
+#Aggregate data: mean for region/year
+#set na.rm = True and na.action = NUll to handle NA
+df4 <- aggregate(df3[, 3:20],list(Region=df3$Region,Year=df3$year), 
+                 mean, na.rm=TRUE, na.action=NULL)
+
+#Summary of final data frame
+str(df4,strict.width="cut")
+
+#Final data frame
+df4
+```
+
+
+
+
+
+
+
+
