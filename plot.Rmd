@@ -1,6 +1,6 @@
 ---
-title: "Assignment #5"
-author: "Mengxin(Maxine) Qian"
+title: "Data Visualization"
+author: "Maxine Qian"
 date: "August 14, 2016"
 output: pdf_document
 ---
