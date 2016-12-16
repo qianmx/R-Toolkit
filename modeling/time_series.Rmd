@@ -1,0 +1,245 @@
+---
+title: "Assignment 3"
+author: "Mengxin Qian"
+date: "12/1/2016"
+linestretch: 1.5
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##1. Introduction
+In this report, I used four time series modeling techniques to model and forest monthly Chinese export figures. The data includes Chinese export and import figures(in 100 million USD) between 1984 and 2008. I split the data into training dataset and set dataset. The training dataset is of the data between January 1984 and December 2002, and the test dataset is of the data between January 2003 and December 2008. In the following setions, I discuessed the modeling process and predictive accuracy of Holt-Winters, SARIMA, ARIMAX, VAR+seasonal indicator approaches respectively. In the end, I compared the four modeling approches and made recommdation for which model to be preferred.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library('knitr')
+library('forecast')
+library('tseries')
+library('lawstat')
+library('vars')
+library('tseries')
+library('car')
+library('pander')
+library('hydroGOF')
+
+# Get the data
+data <- read.csv("china.csv", header=T)
+train <- data[0:228,]
+test <- data[229:300,]
+
+exp_train <- ts(train$ch.exp, start = c(1984, 1), frequency = 12)
+imp_train <- ts(train$ch.imp, start = c(1984, 1), frequency = 12)
+
+exp_test <- ts(test$ch.exp, start = c(2003, 1), frequency = 12)
+imp_test <- ts(test$ch.imp, start = c(2003, 1), frequency = 12)
+```
+
+##2. Holt-Winters
+As indicated in the ACF and PACF plots of Chinese export figures (see Figure 1), there is both trend and seasonality in Chinese export figures data. So, we should use tripple exponential smoothing method to fit the model, of which we need to determine parameters $\alpha$,$\beta$,$\gamma$. I tired different combinations, and tuned the value of $\alpha$,$\beta$,$\gamma$ based on test RMSE, the optimal models are displayed in Table 1. The predctive value of the model is shown in Table 2 and Figure 2. The diagnostic of the residual is shown in Figure 2. Even though the ACF plot indicates that the indepedence assumption is not met, I decided to keep this model, becasue the other models which meet the assumptions would generate very high predctive RMSE.
+
+```{r echo=FALSE,fig.cap="China export, ACF, PACF plots", fig.width=25, fig.height=25}
+#train
+par(mfrow = c(3,1))
+plot(exp_train, main = "China export figures", ylab = "Export", xlab = "Month")
+acf(exp_train,lag.max = 72)
+pacf(exp_train,lag.max = 72)
+hw2 <- HoltWinters(alpha = 0.2, beta = 0.5, gamma = 0.7,x = exp_train, seasonal = "mult")
+hw2_pred <- forecast(hw2, h = 72)
+```
+
+```{r echo=FALSE}
+RMSE_hw2 <- rmse(hw2_pred$mean,exp_test)
+RMSE_hw1 <- RMSE_hw2
+optimal_model <- 'HoltWinters(alpha = 0.2, beta = 0.5, gamma = 0.7,x = exp_train, seasonal = "mult")'
+model_df <- cbind(optimal_model,RMSE_hw2)
+colnames(model_df) <- c('Optimal Model','Predctive RMSE')
+pander(model_df, caption='Optimal Model')
+```
+
+```{r echo=FALSE, fig.cap="Predicted Plot and diagnostic plots", fig.width=25, fig.height=25}
+par(mfrow = c(3,1))
+plot(hw2_pred, main = "China export figures", ylab = "Export", xlab = "Month")
+abline(v = 2003.01, lwd = 1, col = "black")
+lines(exp_test,col='red')
+legend(1985, 1600, lty=c(1,1),col=c("black","red"), legend=c('predicted','actual'))
+
+# diagnostic
+plot(hw2_pred$residuals, main='residual vs t',ylab="")
+abline(h=0, col="red")
+acf(hw2_pred$residuals,na.action = na.pass)
+```
+
+```{r echo=FALSE}
+hw2_pred_mean <- hw2_pred$mean
+hw2_pred_lower <- hw2_pred$lower[,2]
+hw2_pred_higher <- hw2_pred$upper[,2]
+hw2_pred_df <- cbind(hw2_pred_mean,hw2_pred_lower,hw2_pred_higher)
+colnames(hw2_pred_df) <- c('Forecast Mean','95% Lower','95% Higher')
+pander(head(hw2_pred_df),caption='Predcted Value')
+```
+
+##3.SARIMA
+As indicated in Figure 1, the variance of Chinese export figures is not constant, so I log-transformed the export figures. Based on the ACF and PACF plot of the log-transformed data (see Figure 3), there is seansonality in the dataset. So I set d = 1, D = 1. After seasonality differencing, I plotted ACF and PACF plots. As indicated in figure 4, p<=2, q<=1, P<=1, Q<=2. I tried using Maximum Likelyhood, but I found it was hard to fit a model that meet all the assumptions within the computation capbility, so I specified least squared method (method='CSS') in the model. I tried a few different combination of the orders. And based on Table 3, even though the third model has lower signma squared, and higher part log likelihood, the first model is simplier and the performance is similar, so I would chose the first model as the 'optimal' model. I then conducted resiual diagnostics of this model. As indicated in Figure 6, all the assumptions are met. I test the model on test dataset, the optimal model and predctive RMSE are shown in Table 4. The predctive value and plot are shown in Table 5 and Figure 7.
+
+```{r echo=FALSE, fig.cap="ACF,PACF Plot after log transform and ordinary differencing"}
+#ndiffs(log(exp_train))
+exp_train1 <- diff(log(exp_train))
+#nsdiffs(exp_train1,m=12)
+par(mfrow=c(2,1))
+acf(exp_train1,lag.max = 84)
+pacf(exp_train1,lag.max = 84)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.cap="ACF,PACF Plot after log transform, ordinary differencing and seasonality differencing"}
+exp_train1.12 <- diff(exp_train1,lag=12)
+par(mfrow=c(2,1))
+acf(exp_train1.12,lag.max = 84)
+pacf(exp_train1.12,lag.max = 84)
+#adf.test(exp_train1.12) # adf test to check whether it is stationary
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+m1 <- arima(log(exp_train), order = c(1,1,1), seasonal = list(order = c(0,1,0), period = 12), method='CSS')
+m2 <- arima(log(exp_train), order = c(2,1,1), seasonal = list(order = c(0,1,0), period = 12), method='CSS')
+m3 <- arima(log(exp_train), order = c(2,1,1), seasonal = list(order = c(1,1,0), period = 12), method='CSS')
+
+sigma2<-c(m1$sigma2,m2$sigma2,m3$sigma2)
+part_loglik<-c(m1$loglik,m2$loglik,m3$loglik)
+d <- data.frame(pq = c("(1,1,1),(0,1,0)[12]","(2,1,1),(0,1,0)[12]","(2,1,1),(1,1,0)[12]"),sigma2,part_loglik)
+pander(head(d),caption='Model Comparasion')
+```
+
+```{r echo=FALSE, message=FALSE, fig.cap="Training data:Fitted value vs. true value", fig.width=15, fig.height=8}
+par(mfrow=c(1,1))
+fit <- log(exp_train)-m1$residuals
+plot(exp_train)
+lines(exp(fit),col='red')
+legend(1985, 300, lty=c(1,1),col=c("black","red"), legend=c('actual','predict'))
+```
+
+```{r echo=FALSE, message=FALSE, fig.cap="Ljung-Box test"}
+##In formal Diagnostics of the model
+e<-m1$residuals
+r<-e/sqrt(m3$sigma2)
+
+#Mean of error= 0
+tsdiag(m1)
+```
+
+```{r echo=FALSE, message=FALSE, fig.cap="Test data:predicted value vs. true value"}
+arima_pred <-forecast(m1,h=72,level=0.95)
+par(mfrow=c(1,1))
+plot(arima_pred,main = "Chinese export figures", ylab = "Log export value", xlab = "Month")
+lines(log(exp_test),col='red')
+abline(v = 2003.01, lwd = 1, col = "black")
+legend(1985, 10, lty=c(1,1),col=c("black","red"), legend=c('predicted','actual'))
+```
+
+```{r echo=FALSE, message=FALSE}
+arima_pred <-forecast(m1,h=72,level=0.95)
+RMSE_arima <- sqrt( mean( (exp(arima_pred$mean) - exp_test)^2 , na.rm = TRUE ) )
+optimal_model <- "arima(log(exp_train), order = c(1,1,1), seasonal = list(order = c(1,1,0), period = 12), method='CSS')"
+rmse_df <- rbind(optimal_model,RMSE_arima)
+rownames(rmse_df) <- c('Optimal Model','RMSE')
+pander(rmse_df,caption='RMSE of optimal model')
+```
+
+```{r echo=FALSE, message=FALSE}
+arima_pred_df <- data.frame(arima_pred)
+arima_pred_df_exp <- apply(arima_pred_df,c(1,2),exp)
+pander(head(arima_pred_df_exp),caption='Predicted value of test data')
+```
+
+##4.SARIMA + exogenous variable
+
+This section talks about using ARIMX model to fit the data. And this model assumes that import data is a exogenous variable. And this model is based on the SARIMA model in the previous section. Based on the plots of Chinese export figure and import figure (see Figure 8), I log-transformed the import figure value too, and set it as the parameter of xreg. The diagnostic results shown in Figure 9 indicate that all the assumptions are met.I test the model on test dataset, the optimal model and RMSE are shown in Table 6. The predctive value is shown in Table 7 and Figure 10.
+
+```{r echo=FALSE, message=FALSE,fig.cap="Import Figure Plot"}
+par(mfrow=c(1,1))
+plot(imp_train,main = "Chinese impot figures", ylab = "Export", xlab = "Month")
+```
+
+```{r echo=FALSE, message=FALSE,fig.cap="Ljung-Box test"}
+par(mfrow=c(1,1))
+m1 <- arima(log(exp_train), 
+            order = c(1,1,1), 
+            seasonal = list(order = c(0,1,0), period = 12),
+            xreg = data.frame(log(imp_train)),method='CSS')
+tsdiag(m1)
+```
+
+```{r echo=FALSE, message=FALSE}
+arimax_pred <- forecast(m1, h=72,xreg=data.frame(log(imp_test)),level=0.95)
+RMSE_arimax <- sqrt(mean((exp(arimax_pred$mean) - exp_test)^2 , na.rm = TRUE))
+optimal_model <- "arima(log(exp_train), order = c(1,1,1), seasonal = list(order = c(0,1,0), period = 12), xreg = data.frame(log(imp_train)),method='CSS')"
+rmse_df <- rbind(optimal_model,RMSE_arimax)
+rownames(rmse_df) <- c('Optimal Model','RMSE')
+pander(rmse_df,caption='RMSE of optimal model')
+```
+
+```{r echo=FALSE, message=FALSE,fig.cap="Test data:predicted value vs. true value"}
+par(mfrow=c(1,1))
+plot(arimax_pred,main = "Chinese export figures", ylab = "Log export value", xlab = "Month")
+lines(log(exp_test),col='red')
+abline(v = 2003.01, lwd = 1, col = "black")
+legend(1985, 10, lty=c(1,1),col=c("black","red"), legend=c('predicted','actual'))
+```
+
+```{r echo=FALSE, message=FALSE}
+arimax_pred_df <- data.frame(arimax_pred)
+arimax_pred_df_exp <- apply(arimax_pred_df,c(1,2),exp)
+pander(head(arimax_pred_df_exp),caption='Predicted value of test data')
+```
+
+##5. VAR + seasonal indicator
+
+This section talks about using Vector Autoregression model to fit the data. I first use VARselect() function to check the suggested optimal p value, this funciton suggested that 3<=p<=10 (see Table 9), I identified that p = 7 would generate the smallest predctive RMSE. I also tried with season and without season, and found that predctive RMSE is smaller without season setting.The diagnostic results are shown in Figure 12, and it indicates that all the assumptions are met.I tested the model on test dataset, the optimal model and predctive RMSE are shown in Table 10. The predctive value are shown in Table 11 and Figure 11. 
+
+```{r echo=FALSE, message=FALSE}
+pander(VARselect(y = data.frame(exp_train, imp_train)),caption='Ouput of VARselect')
+```
+
+```{r echo=FALSE, message=FALSE}
+var1 <- VAR(y = data.frame(exp_train, imp_train), p = 7)
+```
+
+\newpage
+```{r echo=FALSE, message=FALSE,fig.cap="Predicted value Plot"}
+# Forecasting
+pred <- predict(var1, n.ahead = 72, ci = 0.95)
+par(mfrow=c(1,1))
+plot(pred, ylab = "Export value", xlab = "Month")
+```
+
+```{r echo=FALSE, message=FALSE}
+var_pred <- pred$fcst$exp_train
+var_rmse <- rmse((data.frame(var_pred)$fcst),exp_test)
+# print reuslt
+optimal_model <- "VAR(y = data.frame(exp_train, imp_train), p = 7)"
+rmse_df <- rbind(optimal_model,var_rmse)
+rownames(rmse_df) <- c('Optimal Model','RMSE')
+pander(rmse_df,caption='RMSE of optimal model')
+```
+
+```{r echo=FALSE, message=FALSE}
+predict_df <- pred$fcst$exp_train[,1:3]
+colnames(predict_df) <- c('Forecast Mean','95% Lower','95% Higher')
+pander(head(predict_df),caption='Predicted value of test data')
+```
+
+## Conclusion
+Based on Table 12, ARIMAX model has the lowest RMSE. It is likely that import figures is a endogenous varible of exported figures value. I would choose ARIMAX (SARIMA + exogenous variable) as the optimal model. 
+
+```{r echo=FALSE, message=FALSE}
+methods <- c('Holt-Winters','SARIMA','ARIMAX','VAR')
+rmses <- c(RMSE_hw1,RMSE_arima,RMSE_arimax,var_rmse)
+models_df <- cbind(methods,rmses)
+colnames(models_df) <- c('Modeling Approaches','RMSE')
+pander(models_df,caption='RMSE of Four Modeling Approaches')
+```
+
+![Diagnostic Plot of VAR](/Users/Mengxin/Desktop/TimeSeries/hw/hw3/Rplot.png)
+
+
