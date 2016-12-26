@@ -1,0 +1,336 @@
+---
+title: "Assignment #2"
+author: "Mengxin(Maxine) Qian"
+date: "July 29, 2016"
+output: pdf_document
+---
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Question 1
+##Question 1.1
+###1.1.1
+```{r fig.cap="Histogram of myRunIfVec"}
+myRunIfVec <- runif(10000000,4,6)
+hist(myRunIfVec)
+```
+
+Please refer to Figure 1.
+
+###1.1.2
+```{r fig.cap="Histogram of sampleRunIfVec"}
+sampleRunIfVec <- sample(myRunIfVec,100000,replace = TRUE)
+hist(sampleRunIfVec)
+```
+
+As Figure 2 indicates, the shape is uniform distribution, and it is the same as the population distribution.
+
+###1.1.3
+```{r fig.cap="Histogram of unifSampleMean_2"}
+sample_mean_func <- function(n) {mean(sample(sampleRunIfVec,n))}
+unifSampleMean_2 <- c(1:100000)
+N = 2
+for (i in 1:length(unifSampleMean_2)){unifSampleMean_2[i] <- sample_mean_func(N)}
+hist(unifSampleMean_2)
+```
+
+As Figure 3 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution. 
+
+###1.1.4
+```{r fig.cap="Histogram of unifSampleMean_5"}
+unifSampleMean_5 <- c(1:100000)
+N = 5
+for (i in 1:length(unifSampleMean_5)){unifSampleMean_5[i] <- sample_mean_func(N)}
+hist(unifSampleMean_5)
+```
+
+As Figure 4 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution.
+
+###1.1.5
+```{r fig.cap="Histogram of unifSampleMean_10"}
+unifSampleMean_10 <- c(1:100000)
+N = 10
+for (i in 1:length(unifSampleMean_10)){unifSampleMean_10[i] <- sample_mean_func(N)}
+hist(unifSampleMean_10)
+```
+
+As Figure 5 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution.
+
+###1.1.6
+```{r fig.cap="Histogram of unifSampleMean_30"}
+unifSampleMean_30 <- c(1:100000)
+N = 30
+for (i in 1:length(unifSampleMean_30)){unifSampleMean_30[i] <- sample_mean_func(N)}
+hist(unifSampleMean_30)
+```
+
+As Figure 6 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution.
+
+##Question 1.2
+###1.2.1
+```{r fig.cap="Histogram of myRunIfVec"}
+myRunIfVec2 <- rexp(10000000,0.5)
+hist(myRunIfVec2)
+```
+
+Please reference to Figure 7.
+
+###1.2.2
+```{r fig.cap="Histogram of sampleRunIfVec"}
+sampleRunIfVec2 <- sample(myRunIfVec2,100000,replace=TRUE)
+hist(sampleRunIfVec2)
+```
+
+As Figure 8 indicates, the shape is negative exponential distribution, and it is the same as the population distribution.
+
+###1.2.3
+```{r fig.cap="Histogram of unifSampleMean_2"}
+sample_mean_func2 <- function(n) {mean(sample(sampleRunIfVec2,n))}
+unifSampleMean2_2 <- c(1:100000)
+N = 2
+for (i in 1:length(unifSampleMean2_2)){unifSampleMean2_2[i] <- sample_mean_func2(N)}
+hist(unifSampleMean2_2)
+```
+
+As Figure 9 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution. 
+
+###1.2.4
+```{r fig.cap="Histogram of unifSampleMean_5"}
+unifSampleMean2_5 <- c(1:100000)
+N = 5
+for (i in 1:length(unifSampleMean2_5)){unifSampleMean2_5[i] <- sample_mean_func2(N)}
+hist(unifSampleMean2_5)
+```
+
+As Figure 10 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution.
+
+###1.2.5
+```{r fig.cap="Histogram of unifSampleMean_10"}
+unifSampleMean2_10 <- c(1:100000)
+N = 10
+for (i in 1:length(unifSampleMean2_10)){unifSampleMean2_10[i] <- sample_mean_func2(N)}
+hist(unifSampleMean2_10)
+```
+
+As Figure 11 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution.
+
+###1.2.6
+```{r fig.cap="Histogram of unifSampleMean_30"}
+unifSampleMean2_30 <- c(1:100000)
+N = 30
+for (i in 1:length(unifSampleMean2_30)){unifSampleMean2_30[i] <- sample_mean_func2(N)}
+hist(unifSampleMean2_30)
+```
+
+As Figure 12 indicates, the shape of the sampling distribution of the mean is normal distribution, and it is different from the population distribution.
+
+##Question 1.3
+###1.3.1
+```{r fig.cap="Histogram of myBdist"}
+randomvec1 <- rnorm(5000000,-3,1)
+randomvec2 <- rnorm(5000000,3,1)
+myBdist <- c(randomvec1,randomvec2)
+hist(myBdist)
+```
+
+As Figure 13 indicates, the shape is the combination of two normal distributions. 
+
+###1.3.2
+```{r fig.cap="Histogram of myBdist_5"}
+sample_matrix5 = sample(myBdist,100000,replace=TRUE)
+n=5
+for (i in 1:(n-1)) {sample_matrix5 = cbind(
+  sample_matrix5,sample(myBdist,100000,replace=TRUE))}
+myBdist_5 <- apply(sample_matrix5, 1, mean)
+hist(myBdist_5)
+```
+
+As Figure 14 indicates, the shape of the sampling distribution of the mean is about normal distribution, and it is different from the population distribution.
+
+###1.3.3
+```{r fig.cap="Histogram of myBdist_10"}
+#Sample means = 10
+sample_matrix10 = sample(myBdist,100000,replace=TRUE)
+n=10
+for (i in 1:(n-1)) {sample_matrix10 = cbind(
+  sample_matrix10,sample(myBdist,100000,replace=TRUE))}
+myBdist_10 <- apply(sample_matrix10, 1, mean)
+hist(myBdist_10)
+```
+
+As Figure 15 indicates, the shape of the sampling distribution of the mean is about normal distribution, and it is different from the population distribution.
+
+```{r fig.cap="Histogram of myBdist_20"}
+#Sample means = 20
+sample_matrix20 = sample(myBdist,100000,replace=TRUE)
+n=20
+for (i in 1:(n-1)) {sample_matrix20 = cbind(
+  sample_matrix20,sample(myBdist,100000,replace=TRUE))}
+myBdist_20 <- apply(sample_matrix20, 1, mean)
+hist(myBdist_20)
+```
+
+As Figure 16 indicates, the shape of the sampling distribution of the mean is about normal distribution, and it is different from the population distribution.
+
+```{r fig.cap="Histogram of myBdist_30"}
+#Sample means = 30
+sample_matrix30 = sample(myBdist,100000,replace=TRUE)
+n=30
+for (i in 1:(n-1)) {sample_matrix30 = cbind(
+  sample_matrix30,sample(myBdist,100000,replace=TRUE))}
+myBdist_30 <- apply(sample_matrix30, 1, mean)
+hist(myBdist_30)
+```
+
+As Figure 17 indicates, the shape of the sampling distribution of the mean is about normal distribution, and it is different from the population distribution.
+
+###1.3.4
+I have observed that no matter what the distribution the population is. The sample mean distribution is always normal distribution. It is related to the cental limit theorem(CLT) that we learned in MSAN 504, which stats that regardless of the underlying distribution, the mean of a sufficiently large number of an independent and identity distributed sequence of random variables sample will be approximately normally distributed. 
+
+#Question2
+##Step 1: Import the data and summary the data frame.
+```{r}
+hw_df <- read.csv("hw2.csv",stringsAsFactors = FALSE)
+hw_df <- head(hw_df,-6)
+
+str(hw_df,width=85,strict.width="cut")
+```
+
+Firstly, I imported the csv file and stored it in data frame hw_df. And then I omitted the last six rows as they are comment lines and not valid data. And I checked the summary of the dataframe as shown in the output.
+
+##Step2: Clean the column names.
+```{r}
+colnames(hw_df) <- c('ProjectName','CreatedDate','ProjectStatus'
+                     ,'PurchaseChannel','AgreementType','InstallBranch'
+                     ,'UtilityCompany','Jurisdiction','SystemSize'
+                     ,'BuildPartner','PanelUpgrade','Refoof','HOA','PEStampRequired')
+newcolname <- colnames(hw_df)
+```
+
+The original column names are too long and messy, it is not convenient for indexing of the data frame. So I changed the column names to the following names: ``r newcolname``.
+
+##Step 3: Subset data on or after September 01, 2015.
+```{r}
+hw_df$CreatedDate <- as.Date(hw_df$CreatedDate,"%m/%d/%y")
+hw_df_sep <- subset(hw_df,hw_df$CreatedDate>="2015-09-01")
+```
+
+I have changed the Create Date column data type to date, and subset data on or after 2015-09-01. And get a smaller data frame called hw_df_sep.
+
+##Step 4: Check uniqueness of the values in column ProjectName.
+```{r}
+length(unique(hw_df_sep$ProjectName)) == nrow(hw_df)
+hw_df_sep[duplicated(hw_df_sep$ProjectName),]
+```
+
+I have noticed that the project name should be the primary key of the data frame and should be unique; however, 4 rows are duplicated and are not informative with empty string. So I checked the rows with NA and empty string in the following step. 
+
+##Step 5: Replace empty string with NA and remove duplicate and invalid rows.
+```{r}
+NAperColumn <- apply(hw_df_sep,2,function(x) sum(is.na(x)))
+hw_df_sep[,-which(colnames(hw_df_sep) == "CreatedDate")][hw_df_sep[
+  ,-which(colnames(hw_df_sep) == "CreatedDate")]==""] <- NA
+NAperColumn
+
+countNA <- apply(hw_df_sep,1,function(x) sum(is.na(x)))
+nrow0 <- nrow(hw_df_sep) #before remove NA
+hw_df_sep <- hw_df_sep[-which(countNA>5),]
+nrow1 <- nrow(hw_df_sep) #after remove NA
+NArm <- nrow0 - nrow1
+```
+
+Firstly, I checked number of NAs of each column in the current dataframe.As shown in the output, Column System Size has the most of NAs. Most of null values is stored as "" in the data frame.
+Secondly, I replaced the empty string with NA, and checked how many NA in each row. 
+Thirdly, since the rows with many NAs aren't informative, so I remove the rows with more than 5 NAs, and there are ``r NArm`` rows in total. 
+
+##Step 6: Validate each column with categorical value. 
+```{r include = FALSE}
+table(hw_df_sep$ProjectStatus)
+table(hw_df_sep$PurchaseChannel)
+table(hw_df_sep$AgreementType)
+table(hw_df_sep$InstallBranch)
+table(hw_df_sep$UtilityCompany)
+table(hw_df_sep$Jurisdiction)
+unique(hw_df_sep$BuildPartner)
+unique(hw_df_sep$PanelUpgrade)
+unique(hw_df_sep$Refoof)
+unique(hw_df_sep$PEStampRequired)
+```
+```{r}
+unique(hw_df_sep$HOA)
+```
+I used table() and unique() function to check columns with categorical values. And find that the vlaue of column `HOA` don't align with each other as shown in the output, and I cleaned it in the following step. 
+
+##Step 7: Clean HOA column data and align it with other columns.
+```{r}
+HOAreplace <- function(x) {
+  if (is.na(x))
+    {
+    NA
+    }else if(x == "No") 
+    {0
+    }else if(x == "Yes")
+    {1
+    }else if(x == "0")
+    {0
+    }else if (x == "Customer did not know")
+    {NA
+    }else if(x == "1")
+    {1
+      }else{NA}
+    }
+
+hw_df_sep$HOA <- sapply(hw_df_sep$HOA,HOAreplace)
+
+OldValues <- c("No", "Yes", "0", "1", "Customer did not know")
+NewValues <- c(0, 1, 0, 1, NA)
+replacedf <- data.frame(OldValues,NewValues)
+knitr::kable(replacedf, caption = 'Old Value vs. New Value')
+```
+
+There are "No", "Yes", "0", "1", "Customer did not know" values in this column. I replaced the "No", "0" to integer 0, "Yes","1" to integer 1, and replaced "Customer did not know" with NA, as shown in the Table1.
+
+##Step 8: Check alignment of naming conventions of column Jurisdiction.
+```{r}
+uniqueJurisdiction <- unique(hw_df_sep$Jurisdiction)
+uniqueJurisdiction[!is.na
+                   (uniqueJurisdiction)][!grepl('-',uniqueJurisdiction[
+                     !is.na(uniqueJurisdiction)])]
+hw_df_sep[(hw_df_sep$Jurisdiction == "Summit")&(!is.na(hw_df_sep$Jurisdiction)),]
+hw_df_sep$Jurisdiction[(hw_df_sep$Jurisdiction == "Summit")&
+                         (!is.na(hw_df_sep$Jurisdiction))] <- 'NJ-CITY SUMMIT'
+```
+
+When doing step 6, I noticed that column Jurisdiction should follow the naming convention "STATE-CITY", so I checked whether each unique value in this column follows this naming convention. There is one special name "Summit" which doesn't follow the format. So I replaced all the "Summit" in the column with "NJ-CITY SUMMIT".
+
+##Step 9: Validate column with numeric values and replace systemsize 0 to NA.
+```{r}
+summary(hw_df_sep$SystemSize)
+hw_df_sep$SystemSize[hw_df_sep$SystemSize==0] <- NA
+```
+I checked column Systemsize with numetic value. Since systemsize can't be 0, so I replaced it with NA. The other values in this column are within the reasonable range.
+
+##Step 10: Change column types
+```{r}
+hw_df_sep$ProjectStatus <- as.factor(hw_df_sep$ProjectStatus)
+hw_df_sep$PurchaseChannel <- as.factor(hw_df_sep$PurchaseChannel)
+hw_df_sep$AgreementType <- as.factor(hw_df_sep$AgreementType)
+hw_df_sep$InstallBranch <- as.factor(hw_df_sep$InstallBranch)
+hw_df_sep$UtilityCompany <- as.factor(hw_df_sep$UtilityCompany)
+hw_df_sep$BuildPartner <- as.logical(hw_df_sep$BuildPartner)
+hw_df_sep$PanelUpgrade <- as.logical(hw_df_sep$PanelUpgrade)
+hw_df_sep$Refoof <- as.logical(hw_df_sep$Refoof)
+hw_df_sep$HOA <- as.logical(hw_df_sep$HOA)
+hw_df_sep$PEStampRequired <- as.logical(hw_df_sep$PEStampRequired)
+```
+
+I changed the columns with categotical value to factor type, and changed the columns of binary data to logical type.
+
+##Step 11: Summary of final new data frame.
+```{r}
+str(hw_df_sep,width=90,strict.width="cut")
+```
+
+The output shows summary of the final cleaned data frame.
+
